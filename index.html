@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastreio de Pedido</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        header { background-color: #007bff; color: white; padding: 10px 20px; text-align: center; }
+        nav { background-color: #f4f4f4; padding: 10px 20px; display: flex; justify-content: space-around; }
+        nav a { text-decoration: none; color: #007bff; font-weight: bold; padding: 10px; border-radius: 5px; }
+        .section { display: none; padding: 20px; }
+        .active { display: block; }
+        input, button { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #lista-codigos div { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        #lista-codigos button { color: red; border: none; background: none; cursor: pointer; }
+        #lista-codigos button.edit { color: green; cursor: pointer; }
+        #resultado-rastreio { margin-top: 20px; }
+        .movimentacao { border: 1px solid #007bff; border-radius: 5px; background: #f0f8ff; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <header><h1>Rastreio de Pedido</h1></header>
+    <nav>
+        <a href="#" onclick="mostrarSecao('cliente')">Cliente</a>
+        <a href="#" onclick="mostrarSecao('login')">Admin</a>
+    </nav>
+
+    <!-- Área de Login -->
+    <div id="login" class="section">
+        <h2>Login Administrativo</h2>
+        <form id="form-login">
+            <input type="text" id="admin-usuario" placeholder="Usuário" required>
+            <input type="password" id="admin-senha" placeholder="Senha" required>
+            <button type="submit">Entrar</button>
+        </form>
+        <p id="login-erro" style="color: red; display: none;">Usuário ou senha inválidos!</p>
+    </div>
+
+    <!-- Área Cliente -->
+    <div id="cliente" class="section active">
+        <h2>Área do Cliente</h2>
+        <form id="form-rastreio">
+            <input type="text" id="codigo-rastreio" placeholder="Código de Rastreio" required>
+            <button type="submit">Rastrear Pedido</button>
+        </form>
+        <div id="resultado-rastreio"></div>
+    </div>
+
+    <!-- Área Administrativa -->
+    <div id="admin" class="section">
+        <h2>Área Administrativa</h2>
+        <form id="form-pedido">
+            <input type="text" id="codigo" placeholder="Código de Rastreio" required>
+            <input type="text" id="status" placeholder="Status" required>
+            <input type="text" id="cidade" placeholder="Cidade" required>
+            <input type="date" id="data" required>
+            <input type="time" id="hora" required>
+            <button type="submit">Adicionar Pedido</button>
+        </form>
+
+        <h3>Códigos de Rastreio</h3>
+        <button onclick="mostrarCodigos()">Mostrar Todos os Códigos</button>
+        <div id="lista-codigos"></div>
+
+        <h3>Editar Movimentações</h3>
+        <button onclick="mostrarMovimentacoes()">Mostrar Movimentações</button>
+        <div id="lista-movimentacoes"></div>
+
+        <div id="form-editar" style="display:none;">
+            <h3>Editar Movimentação</h3>
+            <form id="form-editar-movimentacao">
+                <input type="text" id="status-editar" placeholder="Status" required>
+                <input type="text" id="cidade-editar" placeholder="Cidade" required>
+                <input type="date" id="data-editar" required>
+                <input type="time" id="hora-editar" required>
+                <button type="submit">Atualizar Movimentação</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const adminUsuario = "admin";
+        const adminSenha = "1234";
+        let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+        let pedidoEditando = null;
+
+        function mostrarSecao(secaoId) {
+            document.querySelectorAll('.section').forEach(secao => secao.classList.remove('active'));
+            document.getElementById(secaoId).classList.add('active');
+        }
+
+        // Login Administrativo
+        document.getElementById('form-login').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const usuario = document.getElementById('admin-usuario').value;
+            const senha = document.getElementById('admin-senha').value;
+            if (usuario === adminUsuario && senha === adminSenha) {
+                mostrarSecao('admin');
+            } else {
+                document.getElementById('login-erro').style.display = 'block';
+            }
+        });
+
+        // Adicionar Pedido
+        document.getElementById('form-pedido').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const pedido = {
+                codigo: document.getElementById('codigo').value,
+                status: document.getElementById('status').value,
+                cidade: document.getElementById('cidade').value,
+                data: document.getElementById('data').value,
+                hora: document.getElementById('hora').value,
+                movimentacoes: []
+            };
+            pedidos.push(pedido);
+            salvarPedidos();
+            mostrarCodigos();
+        });
+
+        // Rastrear Pedido
+        document.getElementById('form-rastreio').addEventListener('submit', function (e) {
+            e.preventDefault();
+            rastrearPedido(document.getElementById('codigo-rastreio').value);
+        });
+
+        function salvarPedidos() {
+            localStorage.setItem('pedidos', JSON.stringify(pedidos));
+        }
+
+        function rastrearPedido(codigo) {
+    const pedido = pedidos.find(p => p.codigo === codigo);
+    const resultado = document.getElementById('resultado-rastreio');
+    if (pedido) {
+        resultado.innerHTML = `
+            <h3>Detalhes do Pedido</h3>
+            <p><strong>Código:</strong> ${pedido.codigo}</p>
+            <p><strong>Status:</strong> ${pedido.status}</p>
+            <p><strong>Cidade:</strong> ${pedido.cidade}</p>
+            <p><strong>Data:</strong> ${pedido.data}</p>
+            <p><strong>Hora:</strong> ${pedido.hora}</p>
+            <h4>Movimentações:</h4>
+            ${pedido.movimentacoes.map(m => `
+                <div class="movimentacao">
+                    <p><strong>Status:</strong> ${m.status}</p>
+                    <p><strong>Cidade:</strong> ${m.cidade}</p>
+                    <p><strong>Data:</strong> ${m.data}</p>
+                    <p><strong>Hora:</strong> ${m.hora}</p>
+                </div>
+            `).join('')}
+        `;
+    } else {
+        resultado.innerHTML = '<p>Código não encontrado.</p>';
+    }
+}
+
+        function mostrarCodigos() {
+            const listaCodigos = document.getElementById('lista-codigos');
+            listaCodigos.innerHTML = pedidos.map(p => `
+                <div>
+                    <span>${p.codigo} | ${p.status}</span>
+                    <button class="edit" onclick="adicionarMovimentacao('${p.codigo}')">Adicionar Movimentação</button>
+                    <button onclick="removerCodigo('${p.codigo}')">Excluir</button>
+                </div>
+            `).join('');
+        }
+
+        function removerCodigo(codigo) {
+            pedidos = pedidos.filter(p => p.codigo !== codigo);
+            salvarPedidos();
+            mostrarCodigos();
+        }
+
+        function adicionarMovimentacao(codigo) {
+            const status = prompt('Digite o status da movimentação:');
+            const cidade = prompt('Digite a cidade:');
+            const data = prompt('Digite a data (DD-MM-AAAA):');
+            const hora = prompt('Digite a hora (HH:MM):');
+            const pedido = pedidos.find(p => p.codigo === codigo);
+            if (pedido && status && cidade && data && hora) {
+                pedido.movimentacoes.push({ status, cidade, data, hora });
+                salvarPedidos();
+                alert('Movimentação adicionada com sucesso!');
+            } else {
+                alert('Erro ao adicionar movimentação.');
+            }
+        }
+
+        function mostrarMovimentacoes() {
+            const listaMovimentacoes = document.getElementById('lista-movimentacoes');
+            listaMovimentacoes.innerHTML = '';
+            pedidos.forEach(p => {
+                p.movimentacoes.forEach((m, index) => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <p><strong>Status:</strong> ${m.status} | <strong>Cidade:</strong> ${m.cidade} | <strong>Data:</strong> ${m.data} | <strong>Hora:</strong> ${m.hora}</p>
+                        <button onclick="editarMovimentacao('${p.codigo}', ${index})">Editar</button>
+                    `;
+                    listaMovimentacoes.appendChild(div);
+                });
+            });
+        }
+
+        function editarMovimentacao(codigo, index) {
+            const pedido = pedidos.find(p => p.codigo === codigo);
+            const movimentacao = pedido.movimentacoes[index];
+
+            pedidoEditando = { pedido, index };
+
+            document.getElementById('status-editar').value = movimentacao.status;
+            document.getElementById('cidade-editar').value = movimentacao.cidade;
+            document.getElementById('data-editar').value = movimentacao.data;
+            document.getElementById('hora-editar').value = movimentacao.hora;
+
+            document.getElementById('form-editar').style.display = 'block';
+        }
+
+        document.getElementById('form-editar-movimentacao').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            if (pedidoEditando) {
+                const { pedido, index } = pedidoEditando;
+
+                pedido.movimentacoes[index] = {
+                    status: document.getElementById('status-editar').value,
+                    cidade: document.getElementById('cidade-editar').value,
+                    data: document.getElementById('data-editar').value,
+                    hora: document.getElementById('hora-editar').value
+                };
+
+                salvarPedidos();
+                alert('Movimentação atualizada com sucesso!');
+                document.getElementById('form-editar').style.display = 'none';
+                pedidoEditando = null;
+                mostrarMovimentacoes();
+            }
+        });
+
+        mostrarSecao('cliente');
+    </script>
+</body>
+</html>
